@@ -1,0 +1,243 @@
+========================================
+Assignment 4 Submission 
+Name: Kondapalli Mohan Balasubramanyam 
+Roll number: 22CS10036  
+========================================
+
+
+==========================================================================================================
+|-------------------------------------|
+| Data Structures used in "ksocket.h" |
+|-------------------------------------|
+
+|-------------------------------------------------------------------------------------------------------|
+|                               [Macros]                                                                |
+|                                                                                                       |
+|----------- These values can be changed, if this library is open-sourced ------------------------------|
+|                                                                                                       |
+|#define N 15         N represents maximum number of Sockets that can be created                        |
+|#define T 5          T represents the timeout value in secs                                            |
+|#define P 0.05       P represents the probability with which a message is dropped                      |
+|#define MSGSIZE 512  MSGSIZE represents the size of a KTP Packet message size                          |
+|#define MAXMSGS 10   MAXMSGS represents the size of windows for flow control                           |
+|#define MAXSEQNO 256 MAXSEQNO represents the size of sequence number space                             |
+|                                                                                                       |
+|                                                                                                       |
+|                                                                                                       |
+|---------- These values should not be changed at all --------------------------------------------------|
+|                                                                                                       |
+|#define KEY 101          KEY represents the key for shared memory                                      |
+|#define SEMKEY 102       SEMKEY represents the key for semaphores                                      |
+|#define SOCK_KTP 7       SOCK_KTP represents the type for KTP Socket                                   |
+|#define DATA_MSG 10000   DATA_MSG represents the type of KTP Message                                   |
+|#define QUERY_MSG 20000  QUERY_MSG represents the type of KTP Message                                  |
+|#define ACK_MSG 30000    ACK_MSG represents the type of KTP Message                                    |
+|#define ENOSPACE 400     ENOSPACE represents the error for no space in Shared Memory for more Sockets  |                                   |
+|#define ENOTBOUND 401    ENOTBOUND represents the error for not bound Socket                           |
+|#define ENOMESSAGE 402   ENOMESSAGE represents the error for no message in receiver buffer             |
+|                                                                                                       |
+|-------------------------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------|
+|                   [struct win_node]                                       |
+|---------- Structure representing an entry in the sliding window ----------|
+|                                                                           |
+|Fields                                                                     |
+|int seq_no - Sequence number of the packet                                 |
+|struct timeval send_timestamp - Timestamp of the sent packet               |
+|---------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------|
+|                    [struct window]                                        |
+|-------- Structure representing the sliding window for flow control -------|
+|                                                                           |
+|Fields                                                                     |
+|win_node seq_nums[MAXMSGS] - Array of sequence numbers                     |
+|int size - Current window size                                             |
+|---------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------|
+|                   [struct buf_node]                                       |
+|--------- Structure representing an individual message in the buffer ------|
+|                                                                           |
+|Fields                                                                     |
+|char msg[MSGSIZE+1] - The message content                                  |
+|int seq_no - Sequence number of the message                                |
+|---------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------|
+|                     [struct msg_buffer]                                   |
+|--------- Structure representing a queue for storing messages -------------|
+|                                                                           |
+|Fields                                                                     |
+|int st, en - Start and end indices of the buffer                           |
+|buf_node msgs[MAXMSGS] - Array storing the messages                        |
+|int size - Current size of the buffer                                      |
+|---------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------|
+|                      [struct shared_mem]                                  |
+|----------- Structure storing information about a KTP socket --------------|
+|                                                                           |
+|Fields                                                                     |
+|char status - Status of the socket ('F', 'A', 'B', etc.)                   |
+|int pid - Process ID of the owning process                                 |
+|int domain, sockfd, protocol - Socket parameters                           |
+|int gen_seqno - Sequence number for new messages                           |
+|int nospace - Flag for buffer availability                                 |
+|int last_in_order_seqno - Last received in-order sequence number           |
+|int next_seq_no - Next sequence number in the receive window               |
+|int recv_buf_exp_seq - Expected sequence number for next received message  |
+|struct sockaddr_in src, dest - Source and destination addresses            |
+|msg_buffer send_buffer, receive_buffer - Send and receive buffers          |
+|window swnd, rwnd - Send and receive sliding windows                       |
+|---------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------|
+|                       [struct KTP_Packet]                                 |
+|------------------ Structure for messages sent over UDP -------------------|
+|                                                                           |
+|Fields                                                                     |
+|int type - Message type (DATA_MSG / ACK_MSG / QUERY_MSG)                   |
+|int seq_no - Sequence number                                               |
+|int rwnd_size - Receiver window size                                       |
+|char msg[MSGSIZE+1] - Message data                                         |
+|---------------------------------------------------------------------------|
+
+
+
+|---------------------------|
+| Functions in "ksocket.c"  |
+|---------------------------|
+
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+|                         [int successor(int val)]                                                                                                  |
+|   Returns the next sequence number, considering wraparound at MAXSEQNO                                                                            |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+|                   [int check_less_than(int a, int b)]                                                                                             |
+|           Compares two sequence numbers, considering wraparound                                                                                   |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+|           [int k_socket(int domain, int type, int protocol)]                                                                                      |
+|   Creates a KTP socket entry in shared memory and returns its index                                                                               |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+|   [int k_bind(int ksockfd, const struct sockaddr_in src_addr, socklen_t src_addrlen, const struct sockaddr_in dest_addr, socklen_t dest_addrlen)] |
+|           Binds a KTP socket to source and destination addresses                                                                                  |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+|   [ssize_t k_sendto(int ksockfd, char *buf, const struct sockaddr_in dest_addr, socklen_t dest_addrlen)]                                          |
+|               Sends a message via a KTP socket, adding it to the send buffer                                                                      |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+|               [ssize_t k_recvfrom(int ksockfd, char *buf)]                                                                                        |
+|           Receives a message from a KTP socket’s receive buffer                                                                                   |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+|                           [int k_close(int ksockfd)]                                                                                              |
+|                       Closes a KTP socket, freeing its shared memory space                                                                        |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
+
+
+
+|------------------------------|
+| Functions in "initksocket.c" |
+|------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|                   [void swnd_sendbuf_remove(int sm_index, int seq_no)]                |
+|                   Removes acknowledged messages from the send buffer                  |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|               [void buf_add(msg_buffer *_BUFF, char *msg, int new_seq_no)]            |
+|               Adds a message to a buffer while maintaining sequence order             |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|               [void buf_remove(msg_buffer *_BUFF, int rem_seq_no)]                    |
+|               Removes a message from a buffer based on sequence number                |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|               [void win_enqueue(window *_WIN, int new_seq_num)]                       |
+|                       Adds a sequence number to a window                              |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|               [int win_remove(window *_WIN, int rem_seq_no)]                          |
+|                   Removes a sequence number from a window                             |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|                           [int drop_message(float p)]                                 |
+|                       Simulates packet loss based on probability p                    |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|                       [void update_last_in_order_seqno(int sm_index)]                 |
+|                     Updates the last received in-order sequence number                |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|                           [void garbage_collector()]                                  |
+|                       Cleans up resources of exited processes                         |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|                               [void update_sockets()]                                 |
+|               Handles socket operations like creation, binding, and closing           |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|   [void send_call(int sm_index, int type, int seq_no, int rwnd_size, char *data)]     |
+|                       Constructs and sends a KTP packet                               |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|                           [void *thread_R_main(void *arg)]                            |
+|               Thread function for receiving and handling incoming messages            |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|                       [void *thread_S_main(void *arg)]                                |
+|               Thread function for handling retransmissions and timeouts               |
+|---------------------------------------------------------------------------------------|
+
+|---------------------------------------------------------------------------------------|
+|                               [int main()]                                            |
+|           Initializes shared memory, semaphores, and threads R and S                  |
+|                       Handles user termination input                                  |
+|---------------------------------------------------------------------------------------|
+
+
+==========================================================================================================
+
+
+
+======================================================================================================================================
+
+|---------------------------------------------- TABLE WITH RESULTS FOR VARYING P VALUES --------------------------------------------|
+|-----------------------------------------------------------------------------------------------------------------------------------|
+| [VALUE OF P]  | [TOTAL NUMBER OF TRANSMISSIONS]   | [NUMBER OF MESSAGES GENERATED FROM FILE]  | [AVERAGE NUMBER OF TRANSMISSIONS] |
+|-----------------------------------------------------------------------------------------------------------------------------------|
+|     0.05      |                74                 |                  60                       |                 1.23              |
+|     0.10      |                88                 |                  60                       |                 1.47              |
+|     0.15      |                90                 |                  60                       |                 1.50              |
+|     0.20      |               102                 |                  60                       |                 1.70              |
+|     0.25      |               127                 |                  60                       |                 2.12              |
+|     0.30      |               134                 |                  60                       |                 2.23              |
+|     0.35      |               138                 |                  60                       |                 2.30              |
+|     0.40      |               169                 |                  60                       |                 2.82              |
+|     0.45      |               143                 |                  60                       |                 2.38              |
+|     0.50      |               263                 |                  60                       |                 4.38              |
+|-----------------------------------------------------------------------------------------------------------------------------------|
+
+======================================================================================================================================
