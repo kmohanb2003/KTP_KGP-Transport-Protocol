@@ -31,11 +31,6 @@ This project implements a reliable transport protocol called **KTP (KGP Transpor
 
 ### Build Instructions
 ```bash
-# Build static library
-make lib
-
-# Build initialization daemon
-make init
-
-# Build sample applications
-make users
+make -f makelib.mk
+make -f makeinitksocket.mk
+make -f makeuser.mk
